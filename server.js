@@ -147,15 +147,16 @@ const postLink = async (message, link) => {
 
 // API Route for scheduled YouTube posts
 app.get("/api/post-youtube-video", async (req, res) => {
-  const latestVideo = await getLatestYouTubeVideo();
+  for (let i=0; i<15; i++){
+  let latestVideo = await getLatestYouTubeVideo();
   if (latestVideo) {
     const message = `🎥 New Video Alert: ${latestVideo.title}\n\nWatch now: ${latestVideo.url}`;
     console.log("before api")
     postLink(message, latestVideo.url);
     console.log("after api")
+    break;
     res.json({ success: true, message: "YouTube post scheduled successfully" });
-  } else {
-    res.json({ success: false, message: "No new video found." });
+  } 
   }
 });
 
