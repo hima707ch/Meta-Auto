@@ -1,5 +1,7 @@
 const express = require("express");
 const axios = require("axios");
+const { getPostById, getNumberOfRows } = require("./readFile");
+
 require("dotenv").config();
 
 const app = express();
@@ -12,60 +14,6 @@ const ACCESS_TOKEN_2 = process.env.ACCESS_TOKEN_2;
 const GOOGLE_CLOUD_API_KEY = process.env.GOOGLE_CLOUD_API_KEY;
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
 
-const POSTS = [
-  {
-    "message": `
-The Mentor's Chalk Student Workbook
-Learning is a journey; this workbook is your guide.
-https://www.amazon.com/dp/B0DXFVF69C
-Learning is a journey; this workbook is your guide.
-Students who engage with workbooks reinforce learning up to 70% more effectively.
-The use of structured workbooks dates back to the 1800s when formal education became widespread.
-
-#Mentorship #Learning #History
-`,
-    "imageUrl": `https://m.media-amazon.com/images/I/613mK0VraEL._SY425_.jpg`
-  },
-  {
-    "message": `
-Seeds of Change
-Change starts with a single step.
-https://www.amazon.com/dp/196595720X
-Change starts with a single step.
-Education reform movements have shaped schools for centuries, emphasizing equal access and innovation.
-The education system in the U.S. was dramatically transformed in the early 20th century to prioritize inclusivity.
-
-#Mentorship #Learning #History
-`,
-    "imageUrl": `https://m.media-amazon.com/images/I/714NYXxgtAL._SY466_.jpg`
-  },
-  {
-    "message": `
-Mastering the Classroom Vol 1. Classroom Management
-Creating a positive learning environment where respect, structure, and growth thrive.
-https://www.amazon.com/dp/B0DWNH1ZV9
-Creating a positive learning environment where respect, structure, and growth thrive.
-Effective classroom management reduces student misbehavior by up to 50%.
-Classroom management principles have evolved from rigid discipline models to student-centered approaches.
-
-#Education #Teaching #ClassroomManagement
-`,
-    "imageUrl": `https://m.media-amazon.com/images/I/61Dj4CUAoSL._SY385_.jpg`
-  },
-  {
-    "message": `
-The Mentor's Chalk
-A The Mentor's Chalks impact lasts far beyond the classroom walls.
-https://www.amazon.com/dp/B0DPQFK93G
-A The Mentor's Chalks impact lasts far beyond the classroom walls.
-Many historical teachers were also community leaders, shaping societal progress.
-In the 19th century, teaching was one of the few professions open to women, giving them economic independence.
-
-#Mentorship #Learning #History
-`,
-    "imageUrl": `https://m.media-amazon.com/images/I/71kkL1+G36L._SY466_.jpg`
-  }
-]
 
 const postToFacebook = async (message, imageUrl = null) => {
   console.log("inn api", message, imageUrl)
@@ -78,7 +26,7 @@ const postToFacebook = async (message, imageUrl = null) => {
       ? { url: imageUrl, caption: message, access_token: ACCESS_TOKEN_1 }
       : { message: message, access_token: ACCESS_TOKEN_1 };
 
-      console.log("before req")
+      console.log("before req", payload)
     const response = await axios.post(url, payload);
     console.log("Post created successfully:");
   } catch (error) {
@@ -86,19 +34,25 @@ const postToFacebook = async (message, imageUrl = null) => {
   }
 };
 
+var lastMessageIndex = 0
+
 // API Route for scheduled Facebook posts
 app.get("/api/post-to-facebook", (req, res) => {
-  const hour = new Date().getHours();
-  let messageIndex = [2, 13, 17, 20].indexOf(hour);
-  if(messageIndex == -1){
-    messageIndex = (Math.floor(Math.random() * 3) + 1)
-  }
+
+  ++lastMessageIndex;
+
+  const filePath = "Facebook Ads.xlsx";
+  
+  let postId = lastMessageIndex % getNumberOfRows(filePath)
+  const post = getPostById(filePath, postId);
+
+  console.log(post)
+  
   // if (messageIndex !== -1) {
-    console.log(messageIndex, 'message Index')
 
-    postToFacebook(POSTS[messageIndex]?.message, POSTS[messageIndex]?.imageUrl);
+    postToFacebook(post.message, post.imageUrl);
 
-    console.log(messageIndex, 'after api')
+    console.log(postId, 'after api')
 
     res.json({ success: true, message: "Post scheduled successfully" });
   // }
