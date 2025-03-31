@@ -1,6 +1,8 @@
 const express = require("express");
 const axios = require("axios");
 const { getPostById, getNumberOfRows } = require("./readFile");
+const mongoose = require('mongoose');
+const StaticData = require('./messageIndexSchema')
 
 require("dotenv").config();
 
@@ -14,9 +16,16 @@ const ACCESS_TOKEN_2 = process.env.ACCESS_TOKEN_2;
 const GOOGLE_CLOUD_API_KEY = process.env.GOOGLE_CLOUD_API_KEY;
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
 
+mongoose.connect(process.env.DB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then((data) => {
+  console.log(`mongodb connected to ${data.connection.host}`)
+})
+
 
 const postToFacebook = async (message, imageUrl = null) => {
-  console.log("inn api", message, imageUrl)
+  // console.log("inn api", message, imageUrl)
   try {
     const url = imageUrl
       ? `https://graph.facebook.com/v22.0/${PAGE_ID_1}/photos`
@@ -26,7 +35,7 @@ const postToFacebook = async (message, imageUrl = null) => {
       ? { url: imageUrl, caption: message, access_token: ACCESS_TOKEN_1 }
       : { message: message, access_token: ACCESS_TOKEN_1 };
 
-      console.log("before req", payload)
+      // console.log("before req", payload)
     const response = await axios.post(url, payload);
     console.log("Post created successfully:");
   } catch (error) {
@@ -34,25 +43,32 @@ const postToFacebook = async (message, imageUrl = null) => {
   }
 };
 
-var lastMessageIndex = 0
-
 // API Route for scheduled Facebook posts
-app.get("/api/post-to-facebook", (req, res) => {
+app.get("/api/post-to-facebook", async (req, res) => {
 
-  ++lastMessageIndex;
+  const resp = await StaticData.find({name: "currIndex"})
+  // let lastMessageIndex = StaticData
+
+  let messageIndex = resp[0].messageIndex + 1;
 
   const filePath = "Facebook Ads.xlsx";
   
-  let postId = lastMessageIndex % getNumberOfRows(filePath)
+  let postId = messageIndex % getNumberOfRows(filePath)
   const post = getPostById(filePath, postId);
 
-  console.log(post)
+  // console.log(post)
   
   // if (messageIndex !== -1) {
 
     postToFacebook(post.message, post.imageUrl);
 
-    console.log(postId, 'after api')
+    const updatedDocument = await StaticData.findOneAndUpdate(
+      { name: "currIndex" }, 
+      { $set: { messageIndex: messageIndex } }, 
+      { new: true } 
+    );
+
+    // console.log(postId, 'after api')
 
     res.json({ success: true, message: "Post scheduled successfully" });
   // }
