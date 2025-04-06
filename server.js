@@ -1,13 +1,24 @@
 const express = require("express");
 const axios = require("axios");
-const { getPostById, getNumberOfRows } = require("./readFile");
+const { getPostById, getNumberOfRows, getPostArrayById } = require("./readFile");
 const mongoose = require('mongoose');
 const StaticData = require('./messageIndexSchema')
+const { google } = require('googleapis');
+const sheets = google.sheets('v4');
+
 
 require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+const auth = new google.auth.GoogleAuth({
+  credentials: {
+    client_email: process.env.GOOGLE_CLIENT_EMAIL,
+    private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  },
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+});
 
 const PAGE_ID_1 = process.env.PAGE_ID_1; // Masterclass
 const PAGE_ID_2 = process.env.PAGE_ID_2; // DIY
@@ -23,6 +34,27 @@ mongoose.connect(process.env.DB_URI, {
   console.log(`mongodb connected to ${data.connection.host}`)
 })
 
+async function appendRow(id) {
+  const client = await auth.getClient();
+  const sheets = google.sheets({ version: 'v4', auth: client });
+
+  const spreadsheetId = '1oLVpv7WFSMOGC3qRmHfJIBE2ovNp6qMI6hdkSwuXahk'; 
+  const range = 'Sheet1'; 
+  const valueInputOption = 'RAW';
+
+  const newRow = [getPostArrayById("Facebook Ads.xlsx",id)]
+
+  const response = await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range,
+    valueInputOption,
+    resource: {
+      values: newRow,
+    },
+  });
+
+  console.log('Row added:', response.data.updates);
+}
 
 const postToFacebook = async (message, imageUrl = null) => {
   // console.log("inn api", message, imageUrl)
@@ -69,6 +101,8 @@ app.get("/api/post-to-facebook", async (req, res) => {
     );
 
     // console.log(postId, 'after api')
+
+    appendRow(postId).catch(console.error);
 
     res.json({ success: true, message: "Post scheduled successfully" });
   // }
